@@ -1,32 +1,29 @@
 import streamlit as st
 import gspread
-from google.auth.exceptions import RefreshError
 from google.oauth2.service_account import Credentials
 import openai
 
-# Google Sheets API 설정
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SERVICE_ACCOUNT_FILE = "google_sheets_credentials.json"
+# 환경 변수에서 Google Sheets API 인증 정보 가져오기
+credentials_dict = {
+    "type": st.secrets["gcp"]["type"],
+    "project_id": st.secrets["gcp"]["project_id"],
+    "private_key_id": st.secrets["gcp"]["private_key_id"],
+    "private_key": st.secrets["gcp"]["private_key"].replace("\\n", "\n"),
+    "client_email": st.secrets["gcp"]["client_email"],
+    "client_id": st.secrets["gcp"]["client_id"],
+    "auth_uri": st.secrets["gcp"]["auth_uri"],
+    "token_uri": st.secrets["gcp"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["gcp"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["gcp"]["client_x509_cert_url"],
+}
 
-# Google Sheets 인증 및 자동 갱신 함수
-def authenticate_google_sheets():
-    try:
-        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        client = gspread.authorize(creds)
-        
-        # Google Sheets 연결 (업데이트된 스프레드시트 ID 적용)
-        SHEET_ID = "1jl8a3dCdOav4IJO_268EMjMxmiabyAENvjMcseM_u5I"
-        sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
-        return sheet
-    except RefreshError:
-        st.error("⚠️ 인증 오류 발생! Google Sheets API 토큰을 갱신할 수 없습니다. 관리자에게 문의하세요.")
-        st.stop()
-    except Exception as e:
-        st.error(f"⚠️ Google Sheets API 연결 오류: {e}")
-        st.stop()
+# Google Sheets API 인증 설정
+creds = Credentials.from_service_account_info(credentials_dict, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+client = gspread.authorize(creds)
 
 # Google Sheets 연결
-sheet = authenticate_google_sheets()
+SHEET_ID = "1jl8a3dCdOav4IJO_268EMjMxmiabyAENvjMcseM_u5I"
+sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
 
 # Streamlit 앱 시작
 st.title("📚 AI 학습 보조 시스템")
