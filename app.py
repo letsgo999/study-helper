@@ -8,16 +8,25 @@ import openai
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SERVICE_ACCOUNT_FILE = "google_sheets_credentials.json"
 
-try:
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    
-    # Google Sheets 연결 (업데이트된 스프레드시트 ID 적용)
-    SHEET_ID = "1jl8a3dCdOav4IJO_268EMjMxmiabyAENvjMcseM_u5I"
-    sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
-except RefreshError:
-    st.error("⚠️ 인증 오류 발생! Google Sheets API 토큰을 갱신할 수 없습니다.")
-    st.stop()
+# Google Sheets 인증 및 자동 갱신 함수
+def authenticate_google_sheets():
+    try:
+        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        client = gspread.authorize(creds)
+        
+        # Google Sheets 연결 (업데이트된 스프레드시트 ID 적용)
+        SHEET_ID = "1jl8a3dCdOav4IJO_268EMjMxmiabyAENvjMcseM_u5I"
+        sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
+        return sheet
+    except RefreshError:
+        st.error("⚠️ 인증 오류 발생! Google Sheets API 토큰을 갱신할 수 없습니다. 관리자에게 문의하세요.")
+        st.stop()
+    except Exception as e:
+        st.error(f"⚠️ Google Sheets API 연결 오류: {e}")
+        st.stop()
+
+# Google Sheets 연결
+sheet = authenticate_google_sheets()
 
 # Streamlit 앱 시작
 st.title("📚 AI 학습 보조 시스템")
@@ -32,19 +41,24 @@ if menu == "학습 목표 설정":
     goal = st.text_area("학습 목표를 작성하세요")
     
     if st.button("제출"):
-        sheet.append_row([name, ai_level, goal])
-        st.success("학습 목표가 저장되었습니다!")
+        try:
+            sheet.append_row([name, ai_level, goal])
+            st.success("학습 목표가 저장되었습니다!")
+        except Exception as e:
+            st.error(f"⚠️ 데이터 저장 오류: {e}")
 
 # 2️⃣ 학습 대시보드
 elif menu == "학습 대시보드":
     st.subheader("📊 나의 학습 진행 현황")
-    data = sheet.get_all_records()
-    
-    if data:
-        for user in data:
-            st.write(f"👤 {user['이름']} | 📖 AI 수준: {user['AI 수준']} | 🎯 목표: {user['목표']}")
-    else:
-        st.warning("등록된 학습자가 없습니다.")
+    try:
+        data = sheet.get_all_records()
+        if data:
+            for user in data:
+                st.write(f"👤 {user['이름']} | 📖 AI 수준: {user['AI 수준']} | 🎯 목표: {user['목표']}")
+        else:
+            st.warning("등록된 학습자가 없습니다.")
+    except Exception as e:
+        st.error(f"⚠️ 데이터 불러오기 오류: {e}")
 
 # 3️⃣ 실습 과제 및 AI 피드백
 elif menu == "실습 과제":
@@ -55,15 +69,17 @@ elif menu == "실습 과제":
     answer = st.text_area("프롬프트를 작성하세요")
     
     if st.button("AI 피드백 받기"):
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": f"프롬프트 평가: {answer}"}]
-        )
-        feedback = response["choices"][0]["message"]["content"]
-        
-        sheet.append_row(["과제 제출", answer, feedback])
-        
-        st.write(f"📝 AI 피드백: {feedback}")
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": f"프롬프트 평가: {answer}"}]
+            )
+            feedback = response["choices"][0]["message"]["content"]
+            
+            sheet.append_row(["과제 제출", answer, feedback])
+            st.write(f"📝 AI 피드백: {feedback}")
+        except Exception as e:
+            st.error(f"⚠️ AI 피드백 오류: {e}")
 
 # 4️⃣ AI 챗봇 (Q&A)
 elif menu == "AI 챗봇":
@@ -71,9 +87,12 @@ elif menu == "AI 챗봇":
     query = st.text_input("질문을 입력하세요")
     
     if st.button("질문하기"):
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": query}]
-        )
-        answer = response["choices"][0]["message"]["content"]
-        st.write(f"🤖 AI 응답: {answer}")
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": query}]
+            )
+            answer = response["choices"][0]["message"]["content"]
+            st.write(f"🤖 AI 응답: {answer}")
+        except Exception as e:
+            st.error(f"⚠️ AI 응답 오류: {e}")
