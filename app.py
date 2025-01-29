@@ -1,5 +1,6 @@
 import streamlit as st
 import gspread
+from google.auth.exceptions import RefreshError
 from google.oauth2.service_account import Credentials
 import openai
 
@@ -7,12 +8,16 @@ import openai
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SERVICE_ACCOUNT_FILE = "google_sheets_credentials.json"
 
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-client = gspread.authorize(creds)
-
-# Google Sheets 연결 (스프레드시트 ID 변경 필요)
-SHEET_ID = "YOUR_GOOGLE_SHEET_ID"
-sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
+try:
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    client = gspread.authorize(creds)
+    
+    # Google Sheets 연결 (업데이트된 스프레드시트 ID 적용)
+    SHEET_ID = "1jl8a3dCdOav4IJO_268EMjMxmiabyAENvjMcseM_u5I"
+    sheet = client.open_by_key(SHEET_ID).worksheet("UserProfile")
+except RefreshError:
+    st.error("⚠️ 인증 오류 발생! Google Sheets API 토큰을 갱신할 수 없습니다.")
+    st.stop()
 
 # Streamlit 앱 시작
 st.title("📚 AI 학습 보조 시스템")
